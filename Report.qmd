@@ -1,0 +1,238 @@
+---
+title: "Data-Related Job Salaries Across U.S. Cities"
+author: "Atabek Rysbekov"
+output-file: Report.html
+format:
+  html:
+    embed-resources: true
+editor: visual
+execute:
+  warning: false
+  message: false
+---
+## Introduction
+
+While looking at career opportunities involving data and analysis, I became interested in a simple question: **does the city where someone applies for a job make a difference in the salary they can expect?** Some cities may have many openings, but that does not automatically mean that those jobs offer higher pay. This led me to my research question:
+
+**How do estimated salaries differ across U.S. cities for data-related job postings?**
+
+I began with exploratory data analysis (EDA) to understand the available fields, inspect salary estimates and locations, and identify usable records. After filtering and cleaning the listings, I summarized estimated salaries overall and across states.
+
+To investigate this question, I used the [Data Analyst Jobs dataset][dataset-kaggle] on Kaggle, which contains historical job listings collected from Glassdoor. The data includes job titles, companies, locations, estimated salary ranges, and company ratings. I used the original keyword rule to select postings connected to analyst, finance, economics, or research work. This captures a broad mix of data and analytical roles, not a formal definition of one occupation.
+
+The original CSV contains 2,253 listings. After applying the selection and cleaning steps described below, the analysis uses 564 job postings. The findings may be useful to students deciding where to apply, career advisors comparing job markets, and people interested in how pay differs across locations. Since the dataset contains historical estimates rather than current job offers, the results should be understood as an exploratory comparison, not a description of the job market today.
+
+### Preparing the Data
+
+I first imported the data and standardized the column names. On my computer, the Quarto file is inside **`Data 106/Project`**, and the dataset is inside the separate **`Data 106/data`** folder. The code therefore looks in `../data/DataAnalyst.csv` first. It also accepts `data/DataAnalyst.csv` for a future GitHub repository with a data folder inside the project.
+
+```{r}
+#| label: load-data
+#| include: false
+
+library(tidyverse)
+library(janitor)
+library(knitr)
+
+csv_candidates <- c(
+  file.path("..", "data", "DataAnalyst.csv"),
+  file.path("data", "DataAnalyst.csv")
+)
+
+available_paths <- csv_candidates[file.exists(csv_candidates)]
+
+if (length(available_paths) == 0) {
+  stop(
+    "Cannot find DataAnalyst.csv. Put it in Data 106/data/ ",
+    "(next to the Project folder), or Project/data/."
+  )
+}
+
+jobs_raw <- readr::read_csv(available_paths[[1]], show_col_types = FALSE) |>
+  janitor::clean_names()
+
+required_columns <- c(
+  "job_title", "job_description", "company_name",
+  "location", "salary_estimate", "rating"
+)
+
+missing_columns <- setdiff(required_columns, names(jobs_raw))
+
+if (length(missing_columns) > 0) {
+  stop("Missing expected columns: ", paste(missing_columns, collapse = ", "))
+}
+```
+
+Next, I filtered the listings using keywords related to analyst, finance, economics, and research work. I used a consistent keyword rule so that all analyses describe the same set of selected postings.
+
+```{r}
+#| label: filter-jobs
+#| include: false
+
+jobs_filtered <- jobs_raw |>
+  filter(
+    str_detect(coalesce(job_title, ""), "analyst") |
+    str_detect(coalesce(job_title, ""), "finance") |
+    str_detect(coalesce(job_title, ""), "econom") |
+    str_detect(coalesce(job_title, ""), "research") |
+    str_detect(coalesce(job_description, ""), "econom") |
+    str_detect(coalesce(job_description, ""), "research")
+  )
+```
+
+Finally, I separated each location into city and state, converted salary ranges into estimated annual salaries, and removed listings without usable salary or city information. The salary estimate is the midpoint of the lower and upper values. For example, a range of \$37K–\$66K becomes **\$51,500**. Company ratings outside the 1–5 scale, including Glassdoor's `-1` placeholder, were treated as missing.
+
+```{r}
+#| label: clean-data
+#| include: false
+
+jobs_clean <- jobs_filtered |>
+  select(job_title, company_name, location, salary_estimate, rating) |>
+  mutate(
+    city = str_trim(str_extract(location, "^[^,]+")),
+    state = str_trim(str_extract(location, "(?<=,)\\s*[A-Z]{2}\\b")),
+    salary_numbers = str_extract_all(salary_estimate, "\\d+"),
+    salary_low = purrr::map_dbl(
+      salary_numbers,
+      ~ if (length(.x) >= 2) as.numeric(.x[[1]]) else NA_real_
+    ),
+    salary_high = purrr::map_dbl(
+      salary_numbers,
+      ~ if (length(.x) >= 2) as.numeric(.x[[2]]) else NA_real_
+    ),
+    salary_usd = (salary_low + salary_high) * 500,
+    rating = if_else(
+      !is.na(rating) & rating >= 1 & rating <= 5,
+      rating,
+      NA_real_
+    )
+  ) |>
+  filter(
+    !is.na(salary_usd), salary_usd > 0,
+    !is.na(city), city != ""
+  ) |>
+  select(job_title, company_name, location, city, state,
+         salary_estimate, salary_usd, rating)
+
+if (nrow(jobs_clean) == 0) {
+  stop("No usable job postings remain. Check the downloaded dataset.")
+}
+
+money <- function(x) {
+  paste0(
+    "$",
+    format(round(x), big.mark = ",", trim = TRUE, scientific = FALSE)
+  )
+}
+```
+
+After cleaning, the dataset contains **`r nrow(jobs_clean)` selected postings from `r n_distinct(jobs_clean$city)` different city names**. The main variables used in the analysis are the job title, company, city, state, estimated annual salary, and company rating. I begin with an overall salary summary and a comparison of states.
+
+## Data Analysis
+
+### Table 1) Overall Salary Summary
+
+Before comparing different locations, I wanted to understand the overall salary range in the data. **Table 1** reports the mean, median, minimum, and maximum estimated salaries for all usable postings.
+
+```{r}
+#| label: table-1-overall-salary
+#| echo: false
+
+table1_overall <- jobs_clean |>
+  summarise(
+    n_postings = n(),
+    mean_salary = mean(salary_usd),
+    median_salary = median(salary_usd),
+    min_salary = min(salary_usd),
+    max_salary = max(salary_usd)
+  )
+
+kable(
+  table1_overall |>
+    mutate(across(ends_with("salary"), money)),
+  col.names = c("Postings", "Mean", "Median", "Minimum", "Maximum"),
+  caption = "Table 1: Overall summary of estimated annual salaries (USD)."
+)
+```
+
+The mean gives the overall average, while the median tells me what the middle posting looks like. The minimum and maximum show the total range, but they may represent unusual jobs rather than typical opportunities. This summary provides context for the geographic comparisons below.
+
+### Table 2) Average Salary by State
+
+#### Top 10 States by Job Count
+
+I next compared the ten states with the most selected postings. I included the number of postings because a salary average based on many jobs is more informative than an average based on only one or two listings.
+
+```{r}
+#| label: table-2-state-salaries
+#| echo: false
+
+table2_states <- jobs_clean |>
+  filter(!is.na(state), state != "") |>
+  group_by(state) |>
+  summarise(
+    mean_salary = mean(salary_usd),
+    median_salary = median(salary_usd),
+    n_postings = n(),
+    .groups = "drop"
+  ) |>
+  arrange(desc(n_postings), state) |>
+  slice_head(n = 10)
+
+kable(
+  table2_states |>
+    mutate(
+      mean_salary = money(mean_salary),
+      median_salary = money(median_salary)
+    ),
+  col.names = c("State", "Mean Salary", "Median Salary", "Postings"),
+  caption = "Table 2: Estimated salaries in the ten states with the most postings."
+)
+```
+
+**Table 2** shows whether the busiest states also offer higher salaries. A state with many postings is not necessarily the one with the highest mean or median. This matters for job seekers because the number of opportunities and their pay are two different things.
+
+
+## Discussion
+
+I first compared the estimated annual salaries across all usable postings. **Table 1** reports a mean of approximately **$71,416** and a median of **$68,500**, showing that the typical posting should not be represented by the mean alone.
+
+**Table 2** also shows variation across the states with the most postings. California has a higher mean estimate than Texas in this selected dataset, but that difference may reflect the kinds of jobs and employers represented. These are descriptive statistics, not evidence that a state causes higher pay.
+
+### Limitations
+
+-   **Estimated, not actual salaries:** Glassdoor salary ranges are not verified job offers. Taking the midpoint gives one number for each posting but loses information about the range.
+-   **Historical dataset:** The listings are not a current survey of U.S. salaries or job availability.
+-   **Keyword-based selection:** Some selected jobs may not be closely related to data analysis, and some relevant roles may have been missed. The original keyword rule is case-sensitive.
+-   **Location and salary formatting:** City names can be inconsistent, and salary strings may not all be formatted in exactly the same way. The analysis assumes the two extracted salary numbers represent annual amounts in thousands of dollars.
+-   **Unequal group sizes:** Cities, states, and job titles have different numbers of listings. A small group can have an unstable mean.
+-   **Descriptive findings only:** These comparisons do not control for seniority, industry, cost of living, remote work, or company size. They cannot establish that a city or company rating causes higher pay.
+
+
+## Conclusion
+
+My initial analysis describes estimated annual salaries for selected data-related job postings and compares the states with the most listings. The mean estimate is about **$71,416**, while the median is **$68,500**; states also show differences in their average estimates.
+
+These figures provide context for comparing opportunities, but they are historical salary estimates and do not control for the types of jobs posted in each location.
+
+### References
+
+- [Data Analyst Jobs — Kaggle dataset][dataset-kaggle] — Original historical Glassdoor job-listings data used in this project.
+- [R Project][r-project] — R programming language used for the statistical analysis.
+- [Quarto documentation][quarto-docs] — Instructions for rendering `.qmd` reports to HTML.
+- [tidyverse][tidyverse-docs] — R packages for importing, cleaning, summarizing, and plotting data.
+- [dplyr][dplyr-docs] — Data filtering and grouped summaries.
+- [stringr][stringr-docs] — Keyword searches and salary/location text extraction.
+- [ggplot2][ggplot2-docs] — Figures and exploratory visualizations.
+- [janitor][janitor-docs] — Standardizing dataset column names.
+- [knitr][knitr-docs] — Tables and reproducible report output.
+
+[dataset-kaggle]: https://www.kaggle.com/datasets/andrewmvd/data-analyst-jobs "Data Analyst Jobs — dataset by andrewmvd, Kaggle"
+[r-project]: https://www.r-project.org/ "R: free statistical computing environment"
+[quarto-docs]: https://quarto.org/docs/ "Quarto documentation for scientific and technical publishing"
+[tidyverse-docs]: https://www.tidyverse.org/ "tidyverse: data science packages for R"
+[dplyr-docs]: https://dplyr.tidyverse.org/ "dplyr: data manipulation"
+[stringr-docs]: https://stringr.tidyverse.org/ "stringr: text processing"
+[ggplot2-docs]: https://ggplot2.tidyverse.org/ "ggplot2: grammar of graphics"
+[janitor-docs]: https://sfirke.github.io/janitor/ "janitor: tools for cleaning messy data"
+[knitr-docs]: https://yihui.org/knitr/ "knitr: dynamic reporting for R"
