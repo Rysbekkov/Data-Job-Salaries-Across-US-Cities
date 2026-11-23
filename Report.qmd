@@ -16,7 +16,7 @@ While looking at career opportunities involving data and analysis, I became inte
 
 **How do estimated salaries differ across U.S. cities for data-related job postings?**
 
-I began with exploratory data analysis (EDA) to understand the available fields, inspect salary estimates and locations, and identify usable records. After filtering and cleaning the listings, I summarized estimated salaries overall and across states.
+I began with exploratory data analysis (EDA) to understand the available fields, inspect salary estimates and locations, and identify usable records. After filtering and cleaning the listings, I compared estimated salaries across states and cities and by job title.
 
 To investigate this question, I used the [Data Analyst Jobs dataset][dataset-kaggle] on Kaggle, which contains historical job listings collected from Glassdoor. The data includes job titles, companies, locations, estimated salary ranges, and company ratings. I used the original keyword rule to select postings connected to analyst, finance, economics, or research work. This captures a broad mix of data and analytical roles, not a formal definition of one occupation.
 
@@ -126,7 +126,7 @@ money <- function(x) {
 }
 ```
 
-After cleaning, the dataset contains **`r nrow(jobs_clean)` selected postings from `r n_distinct(jobs_clean$city)` different city names**. The main variables used in the analysis are the job title, company, city, state, estimated annual salary, and company rating. I begin with an overall salary summary and a comparison of states.
+After cleaning, the dataset contains **`r nrow(jobs_clean)` selected postings from `r n_distinct(jobs_clean$city)` different city names**. The main variables used in the analysis are the job title, company, city, state, estimated annual salary, and company rating. I compare estimated salaries overall, by state and city, and by job title.
 
 ## Data Analysis
 
@@ -192,12 +192,90 @@ kable(
 
 **Table 2** shows whether the busiest states also offer higher salaries. A state with many postings is not necessarily the one with the highest mean or median. This matters for job seekers because the number of opportunities and their pay are two different things.
 
+### Table 3) Estimated Salary and Number of Postings by City
+
+#### Top 15 Cities by Job Count
+
+Since my main research question focuses on cities, I created a city-level summary. I selected the fifteen cities with the most postings rather than ranking every city by mean salary, because a city with only one unusually high estimate could otherwise appear at the top.
+
+```{r}
+#| label: table-3-city-salaries
+#| echo: false
+
+top15_cities <- jobs_clean |>
+  count(city, sort = TRUE) |>
+  slice_head(n = 15) |>
+  pull(city)
+
+table3_cities <- jobs_clean |>
+  filter(city %in% top15_cities) |>
+  group_by(city) |>
+  summarise(
+    n_postings = n(),
+    mean_salary = mean(salary_usd),
+    median_salary = median(salary_usd),
+    .groups = "drop"
+  ) |>
+  arrange(desc(n_postings), city)
+
+kable(
+  table3_cities |>
+    mutate(
+      mean_salary = money(mean_salary),
+      median_salary = money(median_salary)
+    ),
+  col.names = c("City", "Postings", "Mean Salary", "Median Salary"),
+  caption = "Table 3: Posting counts and estimated salaries in the fifteen busiest cities."
+)
+```
+
+**Table 3** connects the two pieces of information I care about most: how many jobs are posted in a city and how much those jobs are estimated to pay. If two cities have a similar number of postings but different median salaries, the difference is worth investigating. However, the types of jobs advertised in each city may also be different.
+
+### Table 4) Average and Median Salary by Job Title
+
+#### Top 10 Job Titles
+
+Location is not the only possible explanation for salary differences. I also compared the ten most common job titles to see how the type of role relates to estimated pay.
+
+```{r}
+#| label: table-4-job-titles
+#| echo: false
+
+top10_titles <- jobs_clean |>
+  count(job_title, sort = TRUE) |>
+  slice_head(n = 10) |>
+  pull(job_title)
+
+table4_titles <- jobs_clean |>
+  filter(job_title %in% top10_titles) |>
+  group_by(job_title) |>
+  summarise(
+    mean_salary = mean(salary_usd),
+    median_salary = median(salary_usd),
+    n_postings = n(),
+    .groups = "drop"
+  ) |>
+  arrange(desc(mean_salary))
+
+kable(
+  table4_titles |>
+    mutate(
+      mean_salary = money(mean_salary),
+      median_salary = money(median_salary)
+    ),
+  col.names = c("Job Title", "Mean Salary", "Median Salary", "Postings"),
+  caption = "Table 4: Estimated salaries for the ten most common job titles."
+)
+```
+
+**Table 4** helps explain why a city can contain both high- and low-paying jobs. General analyst positions may have different salary estimates from research-focused or more senior roles. I also look at the difference between the mean and median, since a few very high estimates can increase the average.
+
 
 ## Discussion
 
-I first compared the estimated annual salaries across all usable postings. **Table 1** reports a mean of approximately **$71,416** and a median of **$68,500**, showing that the typical posting should not be represented by the mean alone.
+The overall pay summary and state comparisons provide a starting point, but the city-level analysis addresses my main research question more directly. **Table 3** compares both salary and the number of postings in the fifteen busiest cities. New York has the most selected postings, while some cities with fewer listings show higher estimated salaries.
 
-**Table 2** also shows variation across the states with the most postings. California has a higher mean estimate than Texas in this selected dataset, but that difference may reflect the kinds of jobs and employers represented. These are descriptive statistics, not evidence that a state causes higher pay.
+**Table 4** introduces job title as another important factor. Comparing different titles helps explain why two cities can have different salary averages even when both have a large number of postings. I therefore compare posting counts, pay, and job titles together rather than treating location as the only explanation.
 
 ### Limitations
 
@@ -211,9 +289,9 @@ I first compared the estimated annual salaries across all usable postings. **Tab
 
 ## Conclusion
 
-My initial analysis describes estimated annual salaries for selected data-related job postings and compares the states with the most listings. The mean estimate is about **$71,416**, while the median is **$68,500**; states also show differences in their average estimates.
+The summary tables indicate that the location, number of job postings, and job title all matter when interpreting historical salary estimates. New York has the most selected city-level postings, but it does not have the highest mean salary among the cities compared.
 
-These figures provide context for comparing opportunities, but they are historical salary estimates and do not control for the types of jobs posted in each location.
+These comparisons are exploratory. Different job titles, employers, and sample sizes may account for part of the observed salary differences.
 
 ### References
 
