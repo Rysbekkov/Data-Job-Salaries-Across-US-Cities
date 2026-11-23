@@ -1,18 +1,18 @@
 # Data-Related Job Salaries Across U.S. Cities
 
-A reproducible exploratory data analysis (EDA) project examining estimated salaries for data and analytical jobs across U.S. locations. I wrote the analysis in **R/Quarto**, using historical Glassdoor postings from the [Data Analyst Jobs dataset][dataset-kaggle]. The report compares estimated salaries across states, cities, and job titles through **4 tables**.
+A reproducible exploratory data analysis (EDA) project examining estimated salaries for data and analytical jobs across U.S. locations. I wrote the analysis in **R/Quarto**, using historical Glassdoor postings from the [Data Analyst Jobs dataset][dataset-kaggle]. The report compares salaries, posting counts, and job titles through **4 tables and 4 figures**.
 
 ## What I did
 
-I explored the original **2,253 job listings**, filtered postings using analyst/finance/economics/research keywords, extracted city and state, converted salary ranges into annual salary midpoints, and removed unusable records. This produced **564 selected postings across 119 distinct city names**. I summarized salary patterns overall, by state, by city, and by job title. The keyword rule is case-sensitive; these are historical *estimated* salaries, not confirmed offers or current market rates.
+I explored the original **2,253 job listings**, filtered postings using analyst/finance/economics/research keywords, extracted city and state, converted salary ranges into annual salary midpoints, and removed unusable records. This produced **564 selected postings across 119 distinct city names**. I summarized salaries by location and job title and visualized the overall salary distribution, city posting counts, and differences in pay across cities. The keyword rule is case-sensitive; these are historical *estimated* salaries, not confirmed offers or current market rates.
 
 ## Key findings
 
 - **Overall pay:** Mean estimated annual salary **$71,416**; median **$68,500** (n = 564).
-- **Posting concentration:** New York has the most selected postings among cities (**94**).
-- **City comparison:** San Francisco’s mean estimate is **$99,980** across **25** postings, compared with **$70,410** in New York.
+- **Posting concentration:** New York has the most selected postings among cities (**94**). The fifteen busiest cities differ in posting volume and pay.
+- **City comparison:** Among those cities, San Francisco’s mean estimate is **$99,980** across **25** postings, compared with **$70,410** in New York.
 - **State comparison:** California’s mean is **$86,772** (n = 158); Texas’s is **$56,820** (n = 114).
-- **Job titles:** The ten most common titles have differing salary estimates, so job mix should be considered when comparing cities.
+- **Salary distributions:** The histogram and city boxplots show variation that is not captured by mean salary alone.
 
 ## Project structure
 
