@@ -16,7 +16,7 @@ While looking at career opportunities involving data and analysis, I became inte
 
 **How do estimated salaries differ across U.S. cities for data-related job postings?**
 
-I began with exploratory data analysis (EDA) to understand the available fields, inspect salary estimates and locations, and identify usable records. After filtering and cleaning the listings, I compared estimated salaries across states and cities and by job title.
+I began with exploratory data analysis (EDA) to understand the available fields, inspect salary estimates and locations, and identify usable records. I then created summary tables and visualizations comparing salaries, posting volume, cities, and job titles.
 
 To investigate this question, I used the [Data Analyst Jobs dataset][dataset-kaggle] on Kaggle, which contains historical job listings collected from Glassdoor. The data includes job titles, companies, locations, estimated salary ranges, and company ratings. I used the original keyword rule to select postings connected to analyst, finance, economics, or research work. This captures a broad mix of data and analytical roles, not a formal definition of one occupation.
 
@@ -126,7 +126,7 @@ money <- function(x) {
 }
 ```
 
-After cleaning, the dataset contains **`r nrow(jobs_clean)` selected postings from `r n_distinct(jobs_clean$city)` different city names**. The main variables used in the analysis are the job title, company, city, state, estimated annual salary, and company rating. I compare estimated salaries overall, by state and city, and by job title.
+After cleaning, the dataset contains **`r nrow(jobs_clean)` selected postings from `r n_distinct(jobs_clean$city)` different city names**. The main variables used in the analysis are the job title, company, city, state, estimated annual salary, and company rating. I compare estimated salaries across states, cities, and job titles, then visualize salary distributions and posting volumes.
 
 ## Data Analysis
 
@@ -270,12 +270,152 @@ kable(
 
 **Table 4** helps explain why a city can contain both high- and low-paying jobs. General analyst positions may have different salary estimates from research-focused or more senior roles. I also look at the difference between the mean and median, since a few very high estimates can increase the average.
 
+### Plot 1) Distribution of Estimated Salaries
+
+#### Overall Salary Distribution
+
+The summary in Table 1 does not show how salaries are distributed, so I created a histogram. It shows which salary ranges occur most frequently and whether there are unusual values at the higher end.
+
+```{r}
+#| label: plot-1-salary-histogram
+#| echo: false
+#| fig-width: 9
+#| fig-height: 5.5
+#| fig-cap: "Plot 1: Distribution of estimated annual salaries across selected postings."
+
+jobs_clean |>
+  ggplot(aes(x = salary_usd)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "white") +
+  scale_x_continuous(labels = scales::label_dollar()) +
+  labs(
+    title = "Distribution of Estimated Salaries",
+    x = "Estimated Annual Salary (USD)",
+    y = "Number of Job Postings"
+  ) +
+  theme_classic()
+```
+
+**Plot 1** shows where most estimated salaries are concentrated and how far the distribution extends. If there are a few much higher salaries than the rest, they can raise the mean without changing the median as much. This is why I reported both measures in the tables.
+
+### Plot 2) Top 15 Cities by Number of Job Postings
+
+#### Where Are Most Opportunities Listed?
+
+I created a bar chart showing the cities with the largest numbers of selected postings. This is a useful comparison before looking directly at salary, because it tells me where the jobs in the dataset are concentrated.
+
+```{r}
+#| label: plot-2-city-job-counts
+#| echo: false
+#| fig-width: 9
+#| fig-height: 6
+#| fig-cap: "Plot 2: Number of selected job postings in the fifteen busiest cities."
+
+jobs_clean |>
+  filter(city %in% top15_cities) |>
+  count(city) |>
+  ggplot(aes(x = forcats::fct_reorder(city, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Top 15 Cities by Number of Job Postings",
+    x = "City",
+    y = "Number of Job Postings"
+  ) +
+  theme_minimal()
+```
+
+**Plot 2** highlights the biggest job markets in this sample. A tall bar means that a city has many selected postings, but it does not tell me whether they are well paid. The salary comparisons in Table 3 and the next plots help answer that second question.
+
+### Plot 3) Salary Distribution Across Top 10 Cities
+
+#### City and Estimated Salary
+
+For the ten cities with the most postings, I used boxplots to compare the median salary and the spread of individual estimates. This figure helps compare salary variation across locations.
+
+```{r}
+#| label: plot-3-city-salary-boxplot
+#| echo: false
+#| fig-width: 9
+#| fig-height: 6
+#| fig-cap: "Plot 3: Salary distributions in the ten cities with the most postings."
+
+top10_cities <- jobs_clean |>
+  count(city, sort = TRUE) |>
+  slice_head(n = 10) |>
+  pull(city)
+
+jobs_clean |>
+  filter(city %in% top10_cities) |>
+  ggplot(aes(
+    x = forcats::fct_reorder(city, salary_usd, .fun = median),
+    y = salary_usd
+  )) +
+  geom_boxplot(fill = "white") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::label_dollar()) +
+  labs(
+    title = "Salary Distribution Across Top 10 Cities",
+    x = "City",
+    y = "Estimated Annual Salary (USD)"
+  ) +
+  theme_classic()
+```
+
+**Plot 3** shows why one city average cannot tell the whole story. Some cities have higher median salaries, while others show a wider range of estimates. A wide box suggests considerable variation among the jobs listed in that city. This could reflect different job titles, employers, and seniority levels.
+
+### Plot 4) Average Salary by City and Job Count
+
+#### Comparing Salary with the Number of Opportunities
+
+I created another visualization to look at salary and job availability together. Each point represents one of the fifteen busiest cities. The vertical position shows the mean estimated salary, and the size of the point shows the number of job postings.
+
+```{r}
+#| label: plot-4-city-mean-and-count
+#| echo: false
+#| fig-width: 9
+#| fig-height: 6
+#| fig-cap: "Plot 4: Mean estimated salary by city, with point size representing posting count."
+
+city_salary_summary <- jobs_clean |>
+  filter(city %in% top15_cities) |>
+  group_by(city) |>
+  summarise(
+    mean_salary = mean(salary_usd),
+    n_postings = n(),
+    .groups = "drop"
+  )
+
+ggplot(
+  city_salary_summary,
+  aes(
+    x = forcats::fct_reorder(city, mean_salary),
+    y = mean_salary,
+    size = n_postings
+  )
+) +
+  geom_point(color = "steelblue", alpha = 0.75) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::label_dollar()) +
+  scale_size_continuous(range = c(2.5, 8)) +
+  labs(
+    title = "Average Salary by City and Job Count",
+    x = "City",
+    y = "Mean Estimated Annual Salary (USD)",
+    size = "Job Postings"
+  ) +
+  theme_minimal()
+```
+
+**Plot 4** makes the possible trade-off between salary and posting volume easier to understand. A city with a larger point has more listings, but it may not be the city with the highest average salary. This is a descriptive comparison; it does not account for cost of living or differences in job qualifications.
+
 
 ## Discussion
 
-The overall pay summary and state comparisons provide a starting point, but the city-level analysis addresses my main research question more directly. **Table 3** compares both salary and the number of postings in the fifteen busiest cities. New York has the most selected postings, while some cities with fewer listings show higher estimated salaries.
+The four summary tables provide estimates for the overall sample, states, cities, and job titles. The visualizations help show patterns that the averages cannot explain on their own.
 
-**Table 4** introduces job title as another important factor. Comparing different titles helps explain why two cities can have different salary averages even when both have a large number of postings. I therefore compare posting counts, pay, and job titles together rather than treating location as the only explanation.
+**Plot 1** shows the distribution of individual salary estimates. **Plot 2** compares posting counts across the fifteen busiest cities, while **Plot 3** shows how the spread of estimated salaries differs between the ten busiest cities. **Plot 4** places average salary and posting volume side by side.
+
+Together, the tables and plots indicate that a city with many postings does not necessarily have the highest estimated pay. I also consider job titles and unequal sample sizes before interpreting these differences.
 
 ### Limitations
 
@@ -289,9 +429,9 @@ The overall pay summary and state comparisons provide a starting point, but the 
 
 ## Conclusion
 
-The summary tables indicate that the location, number of job postings, and job title all matter when interpreting historical salary estimates. New York has the most selected city-level postings, but it does not have the highest mean salary among the cities compared.
+The tables and visualizations show that estimated pay and the availability of job postings can differ considerably across U.S. cities. City averages are useful, but boxplots and posting counts provide additional context about variation and opportunity volume.
 
-These comparisons are exploratory. Different job titles, employers, and sample sizes may account for part of the observed salary differences.
+For job comparisons, I would consider the role, the median and distribution of estimated salaries, and the number of listings together. The findings remain descriptive and should not be treated as current market rates.
 
 ### References
 
