@@ -1,18 +1,18 @@
 # Data-Related Job Salaries Across U.S. Cities
 
-A reproducible exploratory data analysis (EDA) project examining estimated salaries for data and analytical jobs across U.S. locations. I wrote the analysis in **R/Quarto**, using historical Glassdoor postings from the [Data Analyst Jobs dataset][dataset-kaggle]. The report compares salaries, posting counts, and job titles through **4 tables and 4 figures**.
+A reproducible exploratory data analysis (EDA) project that studies estimated salaries for data and analytical jobs across U.S. cities. I wrote the analysis in **R/Quarto**, using historical Glassdoor postings from the [Data Analyst Jobs dataset][dataset-kaggle]. The report compares salary distributions, posting counts, job titles, and company ratings through **4 tables and 6 figures**.
 
 ## What I did
 
-I explored the original **2,253 job listings**, filtered postings using analyst/finance/economics/research keywords, extracted city and state, converted salary ranges into annual salary midpoints, and removed unusable records. This produced **564 selected postings across 119 distinct city names**. I summarized salaries by location and job title and visualized the overall salary distribution, city posting counts, and differences in pay across cities. The keyword rule is case-sensitive; these are historical *estimated* salaries, not confirmed offers or current market rates.
+Before creating the final report, I explored the original **2,253 job listings** and the available fields to identify useful information. I filtered postings using analyst/finance/economics/research keywords, removed irrelevant fields and records without usable salary or city information, extracted city and state, calculated an annual salary midpoint from each salary range, and excluded invalid ratings from rating-specific figures. This produced **564 selected postings across 119 distinct city names**. I then summarized and visualized salary patterns by location, job title, and company rating. The keyword rule is case-sensitive; these are historical *estimated* salaries, not confirmed offers or current market rates.
 
 ## Key findings
 
 - **Overall pay:** Mean estimated annual salary **$71,416**; median **$68,500** (n = 564).
-- **Posting concentration:** New York has the most selected postings among cities (**94**). The fifteen busiest cities differ in posting volume and pay.
-- **City comparison:** Among those cities, San Francisco’s mean estimate is **$99,980** across **25** postings, compared with **$70,410** in New York.
-- **State comparison:** California’s mean is **$86,772** (n = 158); Texas’s is **$56,820** (n = 114).
-- **Salary distributions:** The histogram and city boxplots show variation that is not captured by mean salary alone.
+- **Posting concentration:** New York has the most selected postings among cities (**94**). The fifteen busiest cities differ in both posting volume and pay.
+- **City comparison:** Among those busy cities, San Francisco's mean estimate is **$99,980** across **25** postings, compared with **$70,410** in New York. These differences do not adjust for job level or cost of living.
+- **State comparison:** California's mean is **$86,772** (n = 158); Texas's is **$56,820** (n = 114).
+- **Ratings and pay:** The observed Pearson correlation is about **0.11** among **496** postings with valid ratings, indicating only a weak linear association.
 
 ## Project structure
 
@@ -21,6 +21,7 @@ The submitted project has this folder structure:
 ```text
 Project/
 ├── Report.qmd           # R code + interpretation (reproducible source)
+├── Report.html          # Standalone HTML report (open in a browser)
 └── README.md            # This guide
 ```
 
@@ -51,7 +52,7 @@ install.packages(c("tidyverse", "janitor", "knitr"))
 
 4. Open **`Report.html`** in your browser. Re-rendering overwrites it with native Quarto output from your local dataset.
 
-**HTML preview:** The included `Report.html` is an adapted static preview of the tables and figures in this version, using the provided finished report as its source. It was not rendered anew in R/Quarto. Render `Report.qmd` locally with the dataset to produce native Quarto output.
+**HTML preview:** The supplied `Report.html` contains tables and figures rebuilt from the uploaded `DataAnalyst.csv` using the QMD's documented analysis rules. Because R and Quarto were not available in the file-building environment, this included HTML was assembled as a standalone, Quarto-styled report rather than produced by executing the `.qmd` in R. The `.qmd` is the reproducible source to use when rendering locally.
 
 ## Data and interpretation notes
 
