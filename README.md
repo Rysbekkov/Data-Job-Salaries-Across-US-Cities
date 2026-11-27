@@ -21,7 +21,6 @@ The submitted project has this folder structure:
 ```text
 Project/
 ├── Report.qmd           # R code + interpretation (reproducible source)
-├── Report.html          # Standalone HTML report (open in a browser)
 └── README.md            # This guide
 ```
 
