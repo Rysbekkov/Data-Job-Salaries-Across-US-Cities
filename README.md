@@ -49,10 +49,6 @@ install.packages(c("tidyverse", "janitor", "knitr"))
    quarto render Report.qmd
    ```
 
-4. Open **`Report.html`** in your browser. Re-rendering overwrites it with native Quarto output from your local dataset.
-
-**HTML preview:** The supplied `Report.html` contains tables and figures rebuilt from the uploaded `DataAnalyst.csv` using the QMD's documented analysis rules. Because R and Quarto were not available in the file-building environment, this included HTML was assembled as a standalone, Quarto-styled report rather than produced by executing the `.qmd` in R. The `.qmd` is the reproducible source to use when rendering locally.
-
 ## Data and interpretation notes
 
 Salaries are historical Glassdoor estimates. The method takes the first two numbers from each salary range (in thousands of dollars) and uses their midpoint. The dataset may contain inconsistent labels and locations. The analyses are descriptive, do not control for differences in seniority or cost of living, and do not establish causation.
